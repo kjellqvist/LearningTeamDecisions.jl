@@ -1,0 +1,8 @@
+2022-09-09T13:21:13.973: Setting up a learning team decision problem.
+2022-09-09T13:21:13.974: Number of Players: 2
+2022-09-09T13:21:13.974: Stepsize parameter λ: 1
+2022-09-09T13:21:13.974: Time Horizon: 1000
+2022-09-09T13:21:13.974: Spectral-norm bound on gain matrices: 2
+2022-09-09T13:21:13.975: Strong convexity lower bound: 2.0000000000000004
+2022-09-09T13:21:13.975: Running 1280 experiments
+2022-09-09T15:43:05.339: Saved to run_2022-09-09T13:21:13.959/data.jld

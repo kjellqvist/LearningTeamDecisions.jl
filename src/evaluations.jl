@@ -1,5 +1,5 @@
 function empirical_optimum_instance(probleminstance::DecisionProblem, kbound, xs, vs, T)
-    (X, V, C, H, D, ms, ps, model_factory) = unpack(probleminstance)
+    (_, _, C, H, D, ms, ps, model_factory) = unpack(probleminstance)
     inds_p = [0; cumsum(probleminstance.ps)]
     inds_m = [0; cumsum(probleminstance.ms)]
     model = Model(model_factory)
@@ -10,6 +10,39 @@ function empirical_optimum_instance(probleminstance::DecisionProblem, kbound, xs
        Symbol("K$i") => @variable(model, [1:ms[i], 1:ps[i]], base_name = "K$i")
        for i in 1:Nplayers(probleminstance)
     )
+    ys = C*xs[:, 1:T] + vs[:, 1:T]
+    us = Matrix{AffExpr}(undef, udim(probleminstance), T)
+    for i = 1:Nplayers(probleminstance)
+        yis = ys[(inds_p[i] + 1) : inds_p[i + 1], :]
+        us[(inds_m[i] + 1) : inds_m[i + 1], :] = variables[Symbol("K$i")] * yis
+        # Bound the spectral norm of Ki by kbound
+        @constraint(model, [kbound; vec(variables[Symbol("K$i")])] ∈ NormSpectralCone(ms[i], ps[i]))
+    end
+    zs = H * xs[:, 1:T] + D * us
+    @constraint(model, [norm_z;vec(zs)] ∈ SecondOrderCone())
+    @objective(model, Min, norm_z)
+    optimize!(model)
+    losses = sum(value.(zs).^2, dims = 1)
+    Ks = Dict{Symbol,Matrix}(
+       Symbol("K$i") => value.(variables[Symbol("K$i")])
+       for i in 1:Nplayers(probleminstance)
+    )
+    return (Ks, losses[:])
+end
+
+function empirical_optimum_instance_warm(probleminstance::DecisionProblem, kbound, xs, vs, T, K0s)
+    (_, _, C, H, D, ms, ps, model_factory) = unpack(probleminstance)
+    inds_p = [0; cumsum(probleminstance.ps)]
+    inds_m = [0; cumsum(probleminstance.ms)]
+    model = Model(model_factory)
+    set_silent(model)
+    @variable(model, norm_z)
+    @variable(model, 0 ≤ t ≤ kbound)
+    variables = Dict{Symbol,Array{VariableRef,2}}(
+       Symbol("K$i") => @variable(model, [1:ms[i], 1:ps[i]], base_name = "K$i", start = K0s[Symbol("K$i")])
+       for i in 1:Nplayers(probleminstance)
+    )
+    
     ys = C*xs[:, 1:T] + vs[:, 1:T]
     us = Matrix{AffExpr}(undef, udim(probleminstance), T)
     for i = 1:Nplayers(probleminstance)

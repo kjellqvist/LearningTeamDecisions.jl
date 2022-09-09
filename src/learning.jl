@@ -37,13 +37,20 @@ end
 
 function gradientbound(pi::DecisionProblem, kbound::Real)
     bg = 4 * opnorm(pi.D)^2 * (opnorm(pi.H) + kbound * opnorm(pi.D) * (opnorm(pi.C) + 1))^2 *
-        (opnorm(C) + 1)^2 * (fourthmoment(pi.X) + 2 * tr(pi.X) * tr(pi.V) + fourthmoment(pi.V)) |> sqrt
+        (opnorm(pi.C) + 1)^2 * (fourthmoment(pi.X) + 2 * tr(pi.X) * tr(pi.V) + fourthmoment(pi.V)) |> sqrt
     return bg
 end
 
-function regretbound(pi::DecisionProblem, λ::Real, kbound::Real)
+function regretbound_gradient(pi::DecisionProblem, λ::Real, kbound::Real)
     @assert 0 < λ < strongconvexity(pi) "λ was chosen larger than the strong convexity parameter, or negative"
     return T -> gradientbound(pi, kbound)^2 * (1 + log(T))
+end
+
+function regretbound_bandit(pi::DecisionProblem, λ::Real, kbound::Real)
+    M1 = opnorm(pi.D)^2 *(opnorm(pi.C)^2 * tr(pi.X) + tr(pi.V))
+    M2 = (opnorm(pi.H) + opnorm(pi.D) * (kbound + 1) * (opnorm(pi.C) + 1))^4 * 
+        (fourthmoment(pi.X) + 2 * tr(pi.X) * tr(pi.V) + fourthmoment(pi.V))
+    return T-> 2*(M1 + M2/λ) * norm(pi.ms .* pi.ps)*sqrt(T)
 end
 
 function learning_with_gradients(K0s, kbound, lossfn, gradientfn, stepsizes, timehorizon)
